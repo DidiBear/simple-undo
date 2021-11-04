@@ -1,6 +1,6 @@
 [package]
 name = "simple-undo"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Adrien Turiot <didibear@gmail.com>"]
 description = "Easy to use undo-redo library"
 documentation = "https://docs.rs/simple-undo"

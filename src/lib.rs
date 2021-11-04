@@ -6,18 +6,18 @@
 use std::ops::Deref;
 
 /// The `Undo` type wrapping a state that tracks updates and allows undoing or redoing them.
-pub struct Undo<TState> {
+pub struct Undo<'state, TState> {
     /// The initial state used to regenerate the current one.
     initial_state: TState,
     /// The current state to update.
     current_state: TState,
     /// All recorded updates applied to the current state.
-    updates: Vec<Box<dyn Fn(&mut TState)>>,
+    updates: Vec<Box<dyn Fn(&mut TState) + 'state>>,
     /// Number of updates applied to the current state. Undoing reduces this number.
     nb_updates: usize,
 }
 
-impl<TState: Clone> Undo<TState> {
+impl<'state, TState: Clone> Undo<'state, TState> {
     /// Wraps the given state in an `Undo`, which will track all updates and allows undoing or redoing them.
     ///
     /// # Example
@@ -64,7 +64,7 @@ impl<TState: Clone> Undo<TState> {
     /// counter.update(|value| *value += 3);
     /// assert_eq!(*counter, 8);
     /// ```
-    pub fn update(&mut self, update_fn: impl Fn(&mut TState) + 'static) {
+    pub fn update(&mut self, update_fn: impl Fn(&mut TState) + 'state) {
         if self.nb_updates != self.updates.len() {
             // Discard previous updates when updating after an undo.
             self.updates.truncate(self.nb_updates);
@@ -131,7 +131,7 @@ impl<TState: Clone> Undo<TState> {
     }
 }
 
-impl<TState: Clone> Deref for Undo<TState> {
+impl<'state, TState: Clone> Deref for Undo<'state, TState> {
     type Target = TState;
 
     fn deref(&self) -> &Self::Target {
@@ -241,5 +241,18 @@ mod tests {
 
         let result: String = input_text.unwrap();
         assert_eq!(result, "Hello");
+    }
+
+    #[test]
+    fn it_works_with_capturing_closures() {
+        let to_add = String::from(" world !");
+        let mut message = Undo::new(String::from("Hello"));
+
+        message.update(|text| text.push_str(&to_add)); // borrow to_add
+
+        message.undo();
+        assert_eq!(*message, "Hello");
+        message.redo();
+        assert_eq!(*message, "Hello world !");
     }
 }
